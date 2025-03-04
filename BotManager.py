@@ -1,9 +1,13 @@
+import random
 import configs.DefaultConfig as defaultConfig
 import utils.DiscordUtil as discordUtil
 import asyncio #to connect to geminig cog
 import discord # importing discord library
 from discord.ext import commands # importing commands from discord.ext
 from cogs.GeminiCog import GeminiAgent # importing GeminiAgent from GeminiCog
+from cogs.PollCog import PollAgent # importing PollAgent from PollCog
+from cogs.RemindCog import RemindAgent # importing RemindAgent from RemindCog
+
 #an intent is a goal or aim behind the users message or query and also a way to tell the bot what to do 
 
 intents = discord.Intents.all() # setting the intents to all
@@ -37,7 +41,12 @@ async def help(ctx):
     await ctx.send(embed = MyEmbed)
 
 @bot.command()
-@commands.check(discordUtil.is_me) #checks if it is the owner because only the owner should be allowed to remove and add cogs
+async def coinflip(ctx):
+    coin = random.choice(["Heads","Tails"])
+    await ctx.send(f"The coin landed on {coin}")
+
+@bot.command()
+@commands.check(discordUtil.is_me) #checks if it is the owner because only the owner should be allowed to remove and add cog
 async def unloadGemini(ctx): #allows you to remove the cog and reload from the server
     await bot.remove_cog('GeminiAgent')
 
@@ -46,9 +55,20 @@ async def unloadGemini(ctx): #allows you to remove the cog and reload from the s
 async def reloadGemini(ctx):
     await bot.add_cog(GeminiAgent(bot))
 
+@bot.command()
+@commands.check(discordUtil.is_me)
+async def unloadPoll(ctx):
+    await bot.remove_cog('PollAgent')
+
+@bot.command()
+@commands.check(discordUtil.is_me)
+async def reloadPoll(ctx):
+    await bot.add_cog(PollAgent(bot))
 
 async def startcogs():
     await bot.add_cog(GeminiAgent(bot))
+    await bot.add_cog(PollAgent(bot))
+    await bot.add_cog(RemindAgent(bot))
 
 asyncio.run(startcogs())
 
