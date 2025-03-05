@@ -73,15 +73,25 @@ class MusicAgent(commands.Cog):
     @commands.command(name='play')
     async def play(self, ctx, *, url):
         voice_client = ctx.message.guild.voice_client
-        if voice_client.is_playing():
-            voice_client.stop()
+        if not voice_client:
+            await ctx.send("I am not connected to a voice channel.")
+            return
+
+        async with ctx.typing():
             player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
-            ctx.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
-            self.queue.append(url)
+            voice_client.play(player, after=lambda e: self.play_next(ctx))
 
-        await ctx.send('Now playing: {}'.format(player.title))
+        await ctx.send(f'Now playing: {player.title}')
 
-    # Usage in Discord chat: !play <YouTube URL>
+    def play_next(self, ctx):
+        if len(self.queue) > 0:
+            next_url = self.queue.pop(0)
+            coro = self.play(ctx, url=next_url)
+            fut = asyncio.run_coroutine_threadsafe(coro, self.bot.loop)
+            try:
+                fut.result()
+            except Exception as e:
+                print(f'Error playing next song: {e}')
 
     @commands.command(name='pause')
     async def pause(self, ctx):
@@ -98,6 +108,7 @@ class MusicAgent(commands.Cog):
             voice_client.resume()
         else:
             await ctx.send("The bot was not playing anything before this. Use play command")
+
     @commands.command(name='show_queue')
     async def show_queue(self, ctx):
         if len(self.queue) == 0:
@@ -105,11 +116,14 @@ class MusicAgent(commands.Cog):
         else:
             queue_list = "\n".join(self.queue[:5])
             await ctx.send(f"Next 5 songs in the queue:\n{queue_list}")
+
     @commands.command(name='stop')
     async def stop(self, ctx):
         voice_client = ctx.message.guild.voice_client
         if voice_client.is_playing():
             voice_client.stop()
+            self.queue.clear()
+            await ctx.send("Stopped playing and cleared the queue.")
         else:
             await ctx.send("The bot is not playing anything at the moment.")
 
@@ -120,15 +134,11 @@ class MusicAgent(commands.Cog):
 
     @commands.command(name='next')
     async def next(self, ctx):
-        if len(self.queue) > 0:
-            url = self.queue.pop(0)
-            async with ctx.typing():
-                player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
-                ctx.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
-
-            await ctx.send('Now playing: {}'.format(player.title))
+        voice_client = ctx.message.guild.voice_client
+        if voice_client.is_playing():
+            voice_client.stop()
         else:
-            await ctx.send('No more songs in queue.')
+            await ctx.send("The bot is not playing anything at the moment.")
 
 def setup(bot):
     bot.add_cog(MusicAgent(bot))

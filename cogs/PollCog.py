@@ -11,7 +11,7 @@ class PollAgent(commands.Cog):
         if msg.content == "ping poll-agent":
             await msg.channel.send("poll-agent is connected..")
     @commands.command()
-    async def poll(self, ctx, minutes:int, title, *options):
+    async def poll(self, ctx, minutes: int, title: str, *options: str):
         if len(options) == 0:
             pollEmbed = discord.Embed(title=title, description=f"You have **{minutes}** minutes remaining!")
             msg = await ctx.send(embed=pollEmbed)
@@ -24,7 +24,7 @@ class PollAgent(commands.Cog):
             msg = await ctx.send(embed=pollEmbed)
             for x in range(len(pollEmbed.fields)):
                 await msg.add_reaction(self.numbers[x])
-        self.poll_loop.start(ctx, minutes, title, options, msg)
+        self.poll_loop.start(ctx, minutes, title, list(options), msg)
 
     @tasks.loop(minutes=1)
     async def poll_loop(self, ctx, minutes, title, options, msg):
