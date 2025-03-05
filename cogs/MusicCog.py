@@ -1,29 +1,36 @@
 import discord
 from discord.ext import commands, tasks
-
-from youtube_dl import YoutubeDL
+import ffmpeg
+from yt_dlp import YoutubeDL
 
 
 class MusicAgent(commands.Cog):
-    def __int__(self, bot):
+    def __init__(self, bot):
         self.bot = bot
 
         self.is_playing = False
         self.is_paused = False
 
         self.music_queue = []
-        self.YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist':'True'}
-        self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+        self.YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist':'True','extract_flat':'in_playlist'}
+        self.FFMPEG_OPTIONS = {
+    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+    'options': '-vn -af volume=1'
+}
 
         self.vc = None
 
     def search_yt(self, item):
         with YoutubeDL(self.YDL_OPTIONS) as ydl:
             try:
-                info = ydl.extract_info(f"ytsearch:{item}", download=False)['entries'][0]
-            except Exception:
+                info = ydl.extract_info(f"ytsearch:{item}", download=False)
+                if 'entries' in info:
+                    return {'source': info['entries'][0]['url'], 'title': info['entries'][0]['title']}
+            except Exception as e:
+                print(f"An error occurred: {e}")
                 return False
-        return {'source': info['formats'][0]['url'], 'title': info['title']}
+        return False
+
     
 
     def play_next(self):
@@ -61,6 +68,11 @@ class MusicAgent(commands.Cog):
     @commands.command(name = "play",aliases = ["p","playing"], help = "Plays a selected song from youtube")
     async def play(self,ctx,*args):
         query = "  ".join(args)
+
+        if ctx.author.voice is None:
+            await ctx.send("You are not connected to a voice channel")	
+            return
+        
         voice_channel = ctx.author.voice.channel
 
         if voice_channel is None:
